@@ -7,11 +7,11 @@
 //   ?ball=0  no golf ball   ?ballx= ?ballz=  where it sits (metres)   ?logo=0  no logo on it   ?inkhits=1  a single hit of ink
 //   ?dist= ?camh= ?camx= ?fov= ?looky=    camera                      ?exposure=   ?dpr=   ?detail=0.5 (smaller water maps)
 import * as THREE from 'three';
-import { Post } from './post.js?v=0f8c8ffa';
-import { buildCan, canSamples } from './can.js?v=0f8c8ffa';
-import { mulberry32, bodyWater, discWater, buildBeads, waterMaterial, Drips, WATER } from './water.js?v=0f8c8ffa';
-import { buildSet } from './set.js?v=0f8c8ffa';
-import { buildBall, Ball } from './ball.js?v=0f8c8ffa';
+import { Post } from './post.js?v=92c1edb3';
+import { buildCan, canSamples } from './can.js?v=92c1edb3';
+import { mulberry32, bodyWater, discWater, buildBeads, waterMaterial, Drips, WATER } from './water.js?v=92c1edb3';
+import { buildSet } from './set.js?v=92c1edb3';
+import { buildBall, Ball } from './ball.js?v=92c1edb3';
 
 const Q = new URLSearchParams(location.search), num = (k, d) => Q.has(k) ? Number(Q.get(k)) : d;
 const touch = matchMedia('(pointer: coarse)').matches;   // a phone or tablet: smaller water maps (memory, load time) and a touch hint
@@ -79,7 +79,7 @@ async function init() {
   WATER.amount = num('drops', 1); WATER.mist = num('mist', 0);
   let art = null;
   if (Q.get('art') !== '0') {
-    art = await new THREE.TextureLoader().loadAsync(Q.get('art') ?? './assets/label.png?v=0f8c8ffa');
+    art = await new THREE.TextureLoader().loadAsync(Q.get('art') ?? './assets/label.png?v=92c1edb3');
     art.colorSpace = THREE.SRGBColorSpace; art.anisotropy = renderer.capabilities.getMaxAnisotropy();
   }
   const body = bodyWater(REST, rand, num('detail', touch ? 0.5 : 1));
@@ -92,7 +92,7 @@ async function init() {
   can.inner.add(buildBeads(body.beads, water));
   scene.add(can.group, set.group); scene.environment = set.env;
   if (Q.get('ball') !== '0') {                                        // a golf ball on the table, left of the can and a little forward
-    const logo = Q.get('logo') === '0' ? null : await new THREE.TextureLoader().loadAsync('./assets/ball-logo.svg?v=0f8c8ffa');
+    const logo = Q.get('logo') === '0' ? null : await new THREE.TextureLoader().loadAsync('./assets/ball-logo.svg?v=92c1edb3');
     if (logo) { logo.colorSpace = THREE.SRGBColorSpace; logo.anisotropy = renderer.capabilities.getMaxAnisotropy(); }
     const m = buildBall(logo, num('inkhits', 2)); m.scale.setScalar(0.001);
     ball = new Ball(m, num('ballx', -0.074), num('ballz', 0.035));   // 1.4 cm nearer the can than before (-0.088); 2.6 cm clear of it
@@ -105,7 +105,7 @@ async function init() {
   scene.traverse(o => { if (o !== set.ground) o.layers.enable(1); });
   resize(); addEventListener('resize', resize);
   hint.textContent = touch ? 'Drag to spin  ·  Throw the ball' : 'Drag to spin  ·  Shift-drag to roll  ·  Throw the ball  ·  Scroll to zoom  ·  Double-click to reset';
-  window.__can = can; window.__set = set; window.__turn = (x, y, z, wq) => can.group.quaternion.set(x, y, z, wq).normalize(); window.__zoom = d => { zoomTo = d; }; window.__ball = ball; window.__drips = drips; window.__info = { beads: body.beads.length, centre: CY };
+  window.__can = can; window.__set = set; window.__turn = (x, y, z, wq) => can.group.quaternion.set(x, y, z, wq).normalize(); window.__zoom = d => { zoomTo = d; }; window.__ball = ball; window.__drips = drips; window.__info = { beads: body.beads.length, centre: CY }; window.__renderer = renderer;
   tick(frame);
 }
 
@@ -136,6 +136,20 @@ function frame(now) {
   refl.fov = cam.fov; refl.aspect = cam.aspect; refl.near = cam.near; refl.far = cam.far; refl.updateProjectionMatrix();
   refl.position.set(cam.position.x, -cam.position.y, cam.position.z); refl.up.set(0, -1, 0); refl.lookAt(look.x, -look.y, look.z); refl.updateMatrixWorld(true);
 
+  if (frameNo === 0) {
+    // The first frame draws everything once more, out of sight, with the ball (hidden until its entrance) and a falling
+    // drop shown, so their shaders are built and the logo is on the graphics card before the ball drops. Otherwise the
+    // graphics card did that work the moment each first appeared, and on a fresh load (nothing in the browser's shader
+    // cache yet) the ball's first bounces stalled (the designer).
+    const shown = ball?.mesh.visible, n = drips.fall.count;
+    if (ball) ball.mesh.visible = true;
+    drips.fall.setMatrixAt(0, drips.M.makeScale(1, 1, 1).setPosition(0, 40, 0)); drips.fall.count = 1;
+    renderer.shadowMap.needsUpdate = true;
+    renderer.setRenderTarget(rtRefl); renderer.render(scene, refl);
+    renderer.setRenderTarget(rtMain); renderer.render(scene, cam);
+    if (ball) ball.mesh.visible = shown;
+    drips.fall.count = n;
+  }
   renderer.shadowMap.needsUpdate = true;
   renderer.setRenderTarget(rtRefl); renderer.render(scene, refl);
   renderer.setRenderTarget(rtMain); renderer.render(scene, cam);

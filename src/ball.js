@@ -12,7 +12,7 @@
 // The ball can be picked up and thrown. It stays in the plane it sits in (it never moves toward or away from the
 // camera), falls, bounces on the table and off the can, and rolls. A hit nudges the can's spin.
 import * as THREE from 'three';
-import { CAN } from './can.js?v=0f8c8ffa';
+import { CAN } from './can.js?v=92c1edb3';
 
 const R = 21.335, SLOPE = 0.28, LOGO = [71 * 25.4 / 72, 30 * 25.4 / 72];          // SLOPE: the dimple wall's slope at its edge; the depth follows from it
 
@@ -107,7 +107,8 @@ export class Ball {
   intro(delay = 0.6) { this.show = { t: -delay, q: this.mesh.quaternion.clone(), x: this.p.x }; this.mesh.visible = false; }
   entrance(dt, cam) {
     const S = this.show, { p, v } = this;
-    S.t += dt;
+    S.wait = (S.wait ?? 0) + dt;                                                        // the pause runs only on smooth frames: a slow one
+    S.t = dt < 0.04 || S.wait > 3 ? S.t + dt : Math.min(S.t, -0.3);                    // puts it back to 0.3 s, so it drops once all is steady
     if (S.t < 0) return;
     if (!S.hops) {
       _v.set(0, 1, 0.5).unproject(cam).sub(cam.position);                              // the top edge of the view, in the ball's plane
