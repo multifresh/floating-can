@@ -3,8 +3,8 @@
 // can's lowest point, falls and rings the puddle is run every frame.
 import * as THREE from 'three';
 import { mergeVertices } from 'three/addons/BufferGeometryUtils.js';
-import { CAN, bodyProfile, profileAt, lidRelief, tabShade } from './can.js?v=2fd7783f';
-import { nearest } from './ball.js?v=2fd7783f';
+import { CAN, bodyProfile, profileAt, lidRelief, tabShade } from './can.js?v=ba8e72d3';
+import { nearest } from './ball.js?v=ba8e72d3';
 
 export function mulberry32(a) { return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };

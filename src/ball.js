@@ -12,7 +12,7 @@
 // The ball can be picked up and thrown. It stays in the plane it sits in (it never moves toward or away from the
 // camera), falls, bounces on the table and off the can, and rolls. A hit nudges the can's spin.
 import * as THREE from 'three';
-import { CAN } from './can.js?v=2fd7783f';
+import { CAN } from './can.js?v=ba8e72d3';
 
 const R = 21.335, SLOPE = 0.28, LOGO = [71 * 25.4 / 72, 30 * 25.4 / 72];          // SLOPE: the dimple wall's slope at its edge; the depth follows from it
 
@@ -71,7 +71,8 @@ export function buildBall(logo, hits = 2) {
 
 // ---------------------------------------------------------------- throwing it
 const RM = R / 1000, G = 9.81, MASS = 0.0459;
-const E_TABLE = 0.6, E_CAN = 0.45, E_WALL = 0.5, MU = 0.35;   // speed kept bouncing off the table, the can, the edges of the view; MU: friction on the can
+const E_CAN = 0.45, E_WALL = 0.5, MU = 0.35, MU_T = 0.3;   // speed kept bouncing off the can and the edges of the view; MU, MU_T: friction on the can, on the table
+const ROLL = 0.05, ROLL_K = 0.15;   // rolling resistance on the table: a steady 0.05 m/s² plus a little that grows with speed
 const CAN_I = 0.01;                                 // the can's moment of inertia (kg m²), many times a full can's (0.0006), so a hit nudges it rather than flings it
 // The can's outline (radius, height about its centre, mm), from the stand ring round to the rim; the lid counts as flat.
 const OUTLINE = [[0, 0], [24.0, 0], [25.5, 1.3], [28.8, 4.3], [31.8, 7.5], [33, 11.6], [33, 103.2], [31.6, 108.4], [29.2, 113.3], [26.6, 117.6], [26.15, 120.1], [27.18, 120.6], [27.22, 121.5], [26.5, 122.2], [0, 122.2]].map(([r, y]) => [r, y - CAN.H / 2]);
@@ -120,10 +121,29 @@ export class Ball {
       if (!held && !(p.y <= RM + 1e-6 && v.y <= 0)) v.y -= G * h;   // gravity, unless the table holds it up
       p.addScaledVector(v, h);
       if (p.y <= RM + 1e-6) {                                           // the table
+        // the designer found it bounced twice and stopped dead, "almost like it's magnetic". A golf ball off a hard table keeps about
+        // three quarters of its speed (a little more on the small bounces), so it rattles down through a dozen shrinking
+        // bounces; each one kicks it a touch sideways (dimples, a landing that is never quite flat), so even a straight drop
+        // ends up rolling a little one way or the other. Friction turns sliding into rolling only as hard as the push allows,
+        // so a ball thrown along the table skids, then rolls, and rolling resistance slows it gently.
         p.y = RM;
-        if (v.y < 0) v.y = held || v.y > -0.12 ? 0 : -v.y * E_TABLE;
-        const vf = (5 * v.x - 2 * this.w * RM) / 7; v.x = vf; this.w = -vf / RM;   // grips: slides into rolling
-        if (!held && v.y === 0) { v.x -= Math.sign(v.x) * Math.min(Math.abs(v.x), 0.15 * h); v.x *= Math.exp(-0.4 * h); this.w = -v.x / RM; }   // rolling resistance
+        let jn = 0;                                                     // how hard the table pushed this step (speed it took out)
+        if (v.y < 0) {
+          const vi = -v.y;
+          if (held || vi < 0.05) { jn = vi; v.y = 0; }
+          else {
+            const e = Math.min(0.8, Math.max(0.7, 0.82 - 0.04 * vi));
+            v.y = vi * e; jn = vi * (1 + e);
+            v.x += (Math.random() - 0.5) * 0.08 * vi;
+          }
+        }
+        if (!held && v.y === 0) jn += G * h;                            // resting on it: its weight
+        const slip = v.x + this.w * RM, J = held ? slip / 3.5 : Math.max(-MU_T * jn, Math.min(MU_T * jn, slip / 3.5));
+        v.x -= J; this.w -= 2.5 * J / RM;                               // a solid ball: the spin takes 2.5 times what the speed loses
+        if (!held && v.y === 0) {
+          const dvx = Math.sign(v.x) * Math.min(Math.abs(v.x), (ROLL + ROLL_K * Math.abs(v.x)) * h);
+          v.x -= dvx; this.w += dvx / RM;
+        }
       }
       if (p.x < L) { p.x = L; if (v.x < 0) v.x = held ? 0 : -v.x * E_WALL; }
       if (p.x > Rt) { p.x = Rt; if (v.x > 0) v.x = held ? 0 : -v.x * E_WALL; }
