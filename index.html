@@ -6,7 +6,7 @@
 <title>Floating can</title>
 <style>
   html, body { margin: 0; height: 100%; background: #02140e; overflow: hidden; }
-  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; cursor: grab; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }   /* not 100vh: on an iPhone that is taller than what shows, and the picture was stretched to fill it */
   body.grabbing canvas { cursor: grabbing; }
   #hint { position: fixed; left: 0; right: 0; bottom: 22px; text-align: center; font: 500 12px/1.4 ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif;
     letter-spacing: 0.08em; text-transform: uppercase; color: rgba(214, 190, 128, 0.72); pointer-events: none; transition: opacity 0.8s; }
@@ -19,6 +19,6 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hint">Chilling the can…</div>
-<script type="module" src="./src/main.js?v=29149789"></script>
+<script type="module" src="./src/main.js?v=004677d4"></script>
 </body>
 </html>

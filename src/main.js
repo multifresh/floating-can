@@ -7,11 +7,11 @@
 //   ?ball=0  no golf ball   ?ballx= ?ballz=  where it sits (metres)   ?logo=0  no logo on it   ?inkhits=1  a single hit of ink
 //   ?dist= ?camh= ?camx= ?fov= ?looky=    camera                      ?exposure=   ?dpr=   ?detail=0.5 (smaller water maps)
 import * as THREE from 'three';
-import { Post } from './post.js?v=29149789';
-import { buildCan, canSamples } from './can.js?v=29149789';
-import { mulberry32, bodyWater, discWater, buildBeads, waterMaterial, Drips, WATER } from './water.js?v=29149789';
-import { buildSet } from './set.js?v=29149789';
-import { buildBall, Ball } from './ball.js?v=29149789';
+import { Post } from './post.js?v=004677d4';
+import { buildCan, canSamples } from './can.js?v=004677d4';
+import { mulberry32, bodyWater, discWater, buildBeads, waterMaterial, Drips, WATER } from './water.js?v=004677d4';
+import { buildSet } from './set.js?v=004677d4';
+import { buildBall, Ball } from './ball.js?v=004677d4';
 
 const Q = new URLSearchParams(location.search), num = (k, d) => Q.has(k) ? Number(Q.get(k)) : d;
 const touch = matchMedia('(pointer: coarse)').matches;   // a phone or tablet: smaller water maps (memory, load time) and a touch hint
@@ -39,7 +39,7 @@ let can, set, drips, ball, post, rtMain, rtRefl, time = 0, last = 0, frameNo = 0
 const spin = new THREE.Vector3(), w = new THREE.Vector3(), dq = new THREE.Quaternion();
 let drag = null, home = false, holding = false;
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), canWas = new THREE.Matrix4();
-const pointerRay = e => { ndc.set(e.clientX / innerWidth * 2 - 1, 1 - e.clientY / innerHeight * 2); ray.setFromCamera(ndc, cam); return ray.ray; };
+const pointerRay = e => { const b = canvas.getBoundingClientRect(); ndc.set((e.clientX - b.left) / b.width * 2 - 1, 1 - (e.clientY - b.top) / b.height * 2); ray.setFromCamera(ndc, cam); return ray.ray; };
 const turn = v => { const a = v.length(); if (a > 1e-7) can.group.quaternion.premultiply(dq.setFromAxisAngle(tmp.copy(v).divideScalar(a), a)); };
 canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); hint.classList.add('gone');
   if (ball?.grab(pointerRay(e))) { holding = true; document.body.classList.add('grabbing'); return; }
@@ -47,7 +47,7 @@ canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointer
 canvas.addEventListener('pointermove', e => {
   if (holding) return ball.move(pointerRay(e));
   if (!drag || !can) return;
-  const now = performance.now(), dx = e.clientX - drag.x, dy = e.clientY - drag.y, dt = Math.max(4, now - drag.t) / 1000, k = 3.6 / Math.min(innerWidth, innerHeight);
+  const now = performance.now(), dx = e.clientX - drag.x, dy = e.clientY - drag.y, dt = Math.max(4, now - drag.t) / 1000, k = 3.6 / Math.min(canvas.clientWidth, canvas.clientHeight);
   if (e.shiftKey || e.buttons === 2) w.set(0, 0, -dx * k); else w.set(dy * k, dx * k, 0);
   turn(w); spin.lerp(w.divideScalar(dt), 0.4);
   drag.x = e.clientX; drag.y = e.clientY; drag.t = now;
@@ -61,8 +61,9 @@ canvas.addEventListener('wheel', e => { e.preventDefault(); zoomTo = Math.min(1.
 
 // ---------------------------------------------------------------- build
 function resize() {
-  if (!innerWidth || !innerHeight) return;            // a hidden tab has no size yet
-  renderer.setPixelRatio(Math.min(devicePixelRatio, num('dpr', 1.5))); renderer.setSize(innerWidth, innerHeight, false);
+  const cw = canvas.clientWidth, ch = canvas.clientHeight;   // drawn at the size it shows at, so nothing is stretched (iPhone toolbars change it)
+  if (!cw || !ch) return;                              // a hidden tab has no size yet
+  renderer.setPixelRatio(Math.min(devicePixelRatio, num('dpr', 1.5))); renderer.setSize(cw, ch, false);
   const W = canvas.width, H = canvas.height;
   rtMain?.dispose(); rtRefl?.dispose(); post?.levels.forEach(l => { l.down.dispose(); l.up.dispose(); });
   rtMain = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: 4 });
@@ -78,7 +79,7 @@ async function init() {
   WATER.amount = num('drops', 1); WATER.mist = num('mist', 0);
   let art = null;
   if (Q.get('art') !== '0') {
-    art = await new THREE.TextureLoader().loadAsync(Q.get('art') ?? './assets/label.png?v=29149789');
+    art = await new THREE.TextureLoader().loadAsync(Q.get('art') ?? './assets/label.png?v=004677d4');
     art.colorSpace = THREE.SRGBColorSpace; art.anisotropy = renderer.capabilities.getMaxAnisotropy();
   }
   const body = bodyWater(REST, rand, num('detail', touch ? 0.5 : 1));
@@ -90,7 +91,7 @@ async function init() {
   can.inner.add(buildBeads(body.beads, water));
   scene.add(can.group, set.group); scene.environment = set.env;
   if (Q.get('ball') !== '0') {                                        // a golf ball on the table, left of the can and a little forward
-    const logo = Q.get('logo') === '0' ? null : await new THREE.TextureLoader().loadAsync('./assets/ball-logo.svg?v=29149789');
+    const logo = Q.get('logo') === '0' ? null : await new THREE.TextureLoader().loadAsync('./assets/ball-logo.svg?v=004677d4');
     if (logo) { logo.colorSpace = THREE.SRGBColorSpace; logo.anisotropy = renderer.capabilities.getMaxAnisotropy(); }
     const m = buildBall(logo, num('inkhits', 2)); m.scale.setScalar(0.001);
     ball = new Ball(m, num('ballx', -0.074), num('ballz', 0.035));   // 1.4 cm nearer the can than before (-0.088); 2.6 cm clear of it
