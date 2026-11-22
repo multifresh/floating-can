@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Floating can</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #02140e; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; cursor: grab; }
+  body.grabbing canvas { cursor: grabbing; }
+  #hint { position: fixed; left: 0; right: 0; bottom: 22px; text-align: center; font: 500 12px/1.4 ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    letter-spacing: 0.08em; text-transform: uppercase; color: rgba(214, 190, 128, 0.72); pointer-events: none; transition: opacity 0.8s; }
+  #hint.gone { opacity: 0; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/jsm/" } }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hint">Chilling the can…</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
