@@ -7,11 +7,11 @@
 //   ?ball=0  no golf ball   ?ballx= ?ballz=  where it sits (metres)   ?logo=0  no logo on it   ?inkhits=1  a single hit of ink
 //   ?dist= ?camh= ?camx= ?fov= ?looky=    camera                      ?exposure=   ?dpr=   ?detail=0.5 (smaller water maps)
 import * as THREE from 'three';
-import { Post } from './post.js?v=004677d4';
-import { buildCan, canSamples } from './can.js?v=004677d4';
-import { mulberry32, bodyWater, discWater, buildBeads, waterMaterial, Drips, WATER } from './water.js?v=004677d4';
-import { buildSet } from './set.js?v=004677d4';
-import { buildBall, Ball } from './ball.js?v=004677d4';
+import { Post } from './post.js?v=d1f1e852';
+import { buildCan, canSamples } from './can.js?v=d1f1e852';
+import { mulberry32, bodyWater, discWater, buildBeads, waterMaterial, Drips, WATER } from './water.js?v=d1f1e852';
+import { buildSet } from './set.js?v=d1f1e852';
+import { buildBall, Ball } from './ball.js?v=d1f1e852';
 
 const Q = new URLSearchParams(location.search), num = (k, d) => Q.has(k) ? Number(Q.get(k)) : d;
 const touch = matchMedia('(pointer: coarse)').matches;   // a phone or tablet: smaller water maps (memory, load time) and a touch hint
@@ -28,7 +28,7 @@ const samples = canSamples(), tmp = new THREE.Vector3(), lowRest = new THREE.Vec
 for (const p of samples) { tmp.copy(p).applyQuaternion(REST); if (tmp.y < lowRest.y) lowRest.copy(tmp); }
 const CY = 0.0254 - lowRest.y * 0.001, centre = new THREE.Vector3(0, CY, 0);      // its lowest point hangs one inch up
 
-const CAM = { fov: num('fov', 27), dist: num('dist', 0.48), h: num('camh', 0.1), x: num('camx', -0.019) };   // dist: 25 % closer than before (0.6), for phones (the designer); x: the camera stands a little left of the can, so can and ball together are centred
+const CAM = { fov: num('fov', 27), dist: num('dist', 0.6), h: num('camh', 0.1), x: num('camx', -0.019) };   // dist: in a tall phone screen the camera comes 20 % closer, so can and ball read 25 % bigger (see frame()); x: the camera stands a little left of the can, so can and ball together are centred
 const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(CAM.fov, 1, 0.05, 40), refl = new THREE.PerspectiveCamera(), look = new THREE.Vector3();
 refl.layers.set(1);                                                                // the view from under the table sees everything but the table
 let can, set, drips, ball, post, rtMain, rtRefl, time = 0, last = 0, frameNo = 0, zoom = CAM.dist, zoomTo = CAM.dist;
@@ -79,7 +79,7 @@ async function init() {
   WATER.amount = num('drops', 1); WATER.mist = num('mist', 0);
   let art = null;
   if (Q.get('art') !== '0') {
-    art = await new THREE.TextureLoader().loadAsync(Q.get('art') ?? './assets/label.png?v=004677d4');
+    art = await new THREE.TextureLoader().loadAsync(Q.get('art') ?? './assets/label.png?v=d1f1e852');
     art.colorSpace = THREE.SRGBColorSpace; art.anisotropy = renderer.capabilities.getMaxAnisotropy();
   }
   const body = bodyWater(REST, rand, num('detail', touch ? 0.5 : 1));
@@ -91,7 +91,7 @@ async function init() {
   can.inner.add(buildBeads(body.beads, water));
   scene.add(can.group, set.group); scene.environment = set.env;
   if (Q.get('ball') !== '0') {                                        // a golf ball on the table, left of the can and a little forward
-    const logo = Q.get('logo') === '0' ? null : await new THREE.TextureLoader().loadAsync('./assets/ball-logo.svg?v=004677d4');
+    const logo = Q.get('logo') === '0' ? null : await new THREE.TextureLoader().loadAsync('./assets/ball-logo.svg?v=d1f1e852');
     if (logo) { logo.colorSpace = THREE.SRGBColorSpace; logo.anisotropy = renderer.capabilities.getMaxAnisotropy(); }
     const m = buildBall(logo, num('inkhits', 2)); m.scale.setScalar(0.001);
     ball = new Ball(m, num('ballx', -0.074), num('ballz', 0.035));   // 1.4 cm nearer the can than before (-0.088); 2.6 cm clear of it
@@ -123,7 +123,9 @@ function frame(now) {
   set.U.uTime.value = time;
 
   zoom += (zoomTo - zoom) * Math.min(1, dt * 8);
-  cam.position.set(CAM.x, CAM.h, zoom * (cam.aspect < 1 ? Math.pow(cam.aspect, -0.75) : 1)); look.set(CAM.x, num('looky', CY - 0.008), 0);
+  const a = cam.aspect, phone = 1 - Math.min(1, Math.max(0, (a - 0.6) / 0.4));   // 1 in a tall phone screen (a <= 0.6), 0 from square to wide
+  cam.position.set(CAM.x, CAM.h, zoom * (a < 1 ? Math.pow(a, -0.75) : 1) * (1 - 0.2 * phone * phone * (3 - 2 * phone)));   // the designer: bigger on the phone, as before on a desktop
+  look.set(CAM.x, num('looky', CY - 0.008), 0);
   cam.lookAt(look); cam.updateMatrixWorld(true);
   if (ball) { ball.update(dt, cam, { group: can.group, prev: canWas, spin, free: !drag }); }
   canWas.copy(can.group.matrixWorld);
