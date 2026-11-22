@@ -7,11 +7,11 @@
 //   ?ball=0  no golf ball   ?ballx= ?ballz=  where it sits (metres)   ?logo=0  no logo on it   ?inkhits=1  a single hit of ink
 //   ?dist= ?camh= ?camx= ?fov= ?looky=    camera                      ?exposure=   ?dpr=   ?detail=0.5 (smaller water maps)
 import * as THREE from 'three';
-import { Post } from './post.js?v=d1f1e852';
-import { buildCan, canSamples } from './can.js?v=d1f1e852';
-import { mulberry32, bodyWater, discWater, buildBeads, waterMaterial, Drips, WATER } from './water.js?v=d1f1e852';
-import { buildSet } from './set.js?v=d1f1e852';
-import { buildBall, Ball } from './ball.js?v=d1f1e852';
+import { Post } from './post.js?v=2fd7783f';
+import { buildCan, canSamples } from './can.js?v=2fd7783f';
+import { mulberry32, bodyWater, discWater, buildBeads, waterMaterial, Drips, WATER } from './water.js?v=2fd7783f';
+import { buildSet } from './set.js?v=2fd7783f';
+import { buildBall, Ball } from './ball.js?v=2fd7783f';
 
 const Q = new URLSearchParams(location.search), num = (k, d) => Q.has(k) ? Number(Q.get(k)) : d;
 const touch = matchMedia('(pointer: coarse)').matches;   // a phone or tablet: smaller water maps (memory, load time) and a touch hint
@@ -79,19 +79,20 @@ async function init() {
   WATER.amount = num('drops', 1); WATER.mist = num('mist', 0);
   let art = null;
   if (Q.get('art') !== '0') {
-    art = await new THREE.TextureLoader().loadAsync(Q.get('art') ?? './assets/label.png?v=d1f1e852');
+    art = await new THREE.TextureLoader().loadAsync(Q.get('art') ?? './assets/label.png?v=2fd7783f');
     art.colorSpace = THREE.SRGBColorSpace; art.anisotropy = renderer.capabilities.getMaxAnisotropy();
   }
   const body = bodyWater(REST, rand, num('detail', touch ? 0.5 : 1));
   can = buildCan({ body: body.maps, lid: discWater(rand, true), bottom: discWater(rand, false) }, art);
   if (Q.has('ink')) can.body.material.userData.U.uInk.value = num('ink', 0.35);
   can.group.scale.setScalar(0.001); can.group.position.copy(centre); can.group.quaternion.copy(REST);
-  set = buildSet(renderer, centre, { x: lowRest.x * 0.0007, z: lowRest.z * 0.0007 + 0.022 });   // the pool lies a little in front of where the drop lands, so more of it shows (the designer)
+  set = buildSet(renderer, centre, { x: lowRest.x * 0.001, z: lowRest.z * 0.001 });   // where the drip lands at rest: the water starts there as a couple of drops
+  if (Q.has('minutes')) set.prefill(num('minutes', 20), rand);
   const water = waterMaterial(set.lampDir);
   can.inner.add(buildBeads(body.beads, water));
   scene.add(can.group, set.group); scene.environment = set.env;
   if (Q.get('ball') !== '0') {                                        // a golf ball on the table, left of the can and a little forward
-    const logo = Q.get('logo') === '0' ? null : await new THREE.TextureLoader().loadAsync('./assets/ball-logo.svg?v=d1f1e852');
+    const logo = Q.get('logo') === '0' ? null : await new THREE.TextureLoader().loadAsync('./assets/ball-logo.svg?v=2fd7783f');
     if (logo) { logo.colorSpace = THREE.SRGBColorSpace; logo.anisotropy = renderer.capabilities.getMaxAnisotropy(); }
     const m = buildBall(logo, num('inkhits', 2)); m.scale.setScalar(0.001);
     ball = new Ball(m, num('ballx', -0.074), num('ballz', 0.035));   // 1.4 cm nearer the can than before (-0.088); 2.6 cm clear of it
@@ -120,6 +121,7 @@ function frame(now) {
   can.group.position.y = CY + 0.0026 * Math.sin(time * 1.1) + 0.001 * Math.sin(time * 0.67 + 1);     // it hovers
   can.group.updateMatrixWorld(true);
   drips.update(time, dt, can.group);
+  set.update(time, dt);
   set.U.uTime.value = time;
 
   zoom += (zoomTo - zoom) * Math.min(1, dt * 8);
