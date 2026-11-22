@@ -109,10 +109,10 @@ export class Ball {
   // can: { group, prev (its matrix last frame), spin (its spin, rad/s, world axes), free (not being turned by hand) }
   update(dt, cam, can) {
     const { p, v } = this, held = this.held, before = p.clone();
-    // the edges of the view, at the ball's height, are walls; never closer than 7 cm to the can's axis, so there is room for
-    // the ball beside the can (it was 14 cm, which put the right wall off screen in a narrow window: the camera stands left of the can)
+    // the edges of the view, at the ball's height, are walls for the ball's centre, so it can go half off either side (the designer,
+    // for phones); never closer than 6 cm to the can's axis, so there is room for the ball beside the can
     const ey = _v.set(p.x, p.y, this.z).project(cam).y, walls = [-1, 1].map(s => { _v.set(s, ey, 0.5).unproject(cam).sub(cam.position); return cam.position.x + _v.x * (this.z - cam.position.z) / _v.z; });
-    const L = Math.min(walls[0], -0.07) + RM, Rt = Math.max(walls[1], 0.07) - RM;
+    const L = Math.min(walls[0], -0.06), Rt = Math.max(walls[1], 0.06);
     _inv.copy(can.group.matrixWorld).invert();
     if (held) { v.subVectors(held.target, p).divideScalar(dt); if (v.length() > 8) v.setLength(8); }   // held: it chases the pointer, but the can and table still stop it
     const n = Math.min(48, Math.max(Math.ceil(dt / 0.004), Math.ceil(v.length() * dt / (RM * 0.4)))), h = dt / n;   // short steps, so it never jumps into the can

@@ -28,7 +28,7 @@ const samples = canSamples(), tmp = new THREE.Vector3(), lowRest = new THREE.Vec
 for (const p of samples) { tmp.copy(p).applyQuaternion(REST); if (tmp.y < lowRest.y) lowRest.copy(tmp); }
 const CY = 0.0254 - lowRest.y * 0.001, centre = new THREE.Vector3(0, CY, 0);      // its lowest point hangs one inch up
 
-const CAM = { fov: num('fov', 27), dist: num('dist', 0.6), h: num('camh', 0.1), x: num('camx', -0.026) };   // x: the camera stands a little left of the can, so can and ball together are centred
+const CAM = { fov: num('fov', 27), dist: num('dist', 0.48), h: num('camh', 0.1), x: num('camx', -0.019) };   // dist: 25 % closer than before (0.6), for phones (the designer); x: the camera stands a little left of the can, so can and ball together are centred
 const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(CAM.fov, 1, 0.05, 40), refl = new THREE.PerspectiveCamera(), look = new THREE.Vector3();
 refl.layers.set(1);                                                                // the view from under the table sees everything but the table
 let can, set, drips, ball, post, rtMain, rtRefl, time = 0, last = 0, frameNo = 0, zoom = CAM.dist, zoomTo = CAM.dist;
@@ -93,7 +93,7 @@ async function init() {
     const logo = Q.get('logo') === '0' ? null : await new THREE.TextureLoader().loadAsync('./assets/ball-logo.svg');
     if (logo) { logo.colorSpace = THREE.SRGBColorSpace; logo.anisotropy = renderer.capabilities.getMaxAnisotropy(); }
     const m = buildBall(logo, num('inkhits', 2)); m.scale.setScalar(0.001);
-    ball = new Ball(m, num('ballx', -0.088), num('ballz', 0.035));
+    ball = new Ball(m, num('ballx', -0.074), num('ballz', 0.035));   // 1.4 cm nearer the can than before (-0.088); 2.6 cm clear of it
     m.lookAt(CAM.x, CAM.h, CAM.dist); m.rotateZ(-0.15); m.rotateOnWorldAxis(Y, 0.3);   // the logo toward the camera, tipped and turned a little, as in the designer's photo
     scene.add(m);
     can.group.updateMatrixWorld(true); canWas.copy(can.group.matrixWorld);
