@@ -12,7 +12,7 @@
 // The ball can be picked up and thrown. It stays in the plane it sits in (it never moves toward or away from the
 // camera), falls, bounces on the table and off the can, and rolls. A hit nudges the can's spin.
 import * as THREE from 'three';
-import { CAN } from './can.js?v=ba8e72d3';
+import { CAN } from './can.js?v=135caa89';
 
 const R = 21.335, SLOPE = 0.28, LOGO = [71 * 25.4 / 72, 30 * 25.4 / 72];          // SLOPE: the dimple wall's slope at its edge; the depth follows from it
 

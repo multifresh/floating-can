@@ -1,17 +1,34 @@
 // The set: an emerald tabletop running back into a dark emerald backdrop, one spotlight from above, the room the
 // metal and the water reflect, and the puddle on the table. Metres, y up, table at y = 0.
 import * as THREE from 'three';
-import { mulberry32 } from './water.js?v=ba8e72d3';
+import { mulberry32 } from './water.js?v=135caa89';
 
 const rgb = (r, g, b) => new THREE.Color().setRGB(r, g, b);
+const Qs = new URLSearchParams(location.search), qn = (k, d) => Qs.has(k) ? +Qs.get(k) : d;
 export const LOOK = {
   table: [0.004, 0.105, 0.058],        // emerald, linear
   horizon: [0.0015, 0.022, 0.014],     // where table and backdrop meet
   top: [0.0006, 0.009, 0.006],
   glow: [0.004, 0.05, 0.03],           // spill of the light on the backdrop behind the can
   spot: { pos: [-0.08, 0.78, 0.42], power: 4.8, angle: 0.36, soft: 1 },   // angle: half-width of the pool (0.44 was 'a little wide', the designer); soft: how gradually its edge fades
+  // A small softbox rather than a bare bulb (2026-11-22, the designer: diffuse it a little, the highlights were too sharp; and the
+  // shadows a little lighter and softer). size: how much wider every highlight of the lamp spreads (added to the GGX
+  // alpha, about the softbox's angular radius over two; 0 was a bare bulb); shadow: how much of the light the shadows
+  // stop (was 1), shadowBlur: how soft their edges are (was 7).
+  softbox: { size: 0.05, shadow: 0.8, shadowBlur: 11 },
   gloss: 0.85, blur: 4,                // how much the dry table mirrors, and how blurred
 };
+
+// The lamp's highlights on every material (metal, clear coat, water, table): the lamp is a point, so its highlight would
+// be as small as the surface is smooth. A lamp with size lights each point from a spread of directions, which widens the
+// highlight and lowers its peak while keeping its total; widening the GGX lobe by the lamp's angular size does that.
+// ?softbox=0 shows the bare bulb, ?softbox=0.1 a bigger box.
+{
+  const size = qn('softbox', LOOK.softbox.size), C = THREE.ShaderChunk, src = C.lights_physical_pars_fragment;
+  const out = src.replace(/(float roughness = material\.(?:clearcoatR|r)oughness;\s*float alpha = pow2\( roughness \);)/g, `$1\n\talpha = min( 1.0, alpha + ${size.toFixed(4)} );`);
+  if ((out.match(/alpha \+ /g) || []).length !== 2) console.warn('softbox: the highlight code in three.js has changed; highlights are a bare bulb\'s');
+  C.lights_physical_pars_fragment = out;
+}
 
 // the room as the can sees it (the table's green is held well down: the designer found the green bounce on the can too strong): the lit table below, the lamp, two tall strips behind for the edges, a dim card in front
 function makeEnv(renderer, lampDir) {
@@ -21,7 +38,7 @@ function makeEnv(renderer, lampDir) {
     const m = new THREE.Mesh(new THREE.CircleGeometry(r, 48), mat(c)); m.rotation.x = -Math.PI / 2; m.position.y = y; s.add(m);
   }
   const card = (geo, pos, c) => { const m = new THREE.Mesh(geo, mat(c)); m.position.set(...pos); m.lookAt(0, 0, 0); s.add(m); };
-  card(new THREE.CircleGeometry(0.115, 32), lampDir.clone().multiplyScalar(2.2).toArray(), [150, 142, 128]);   // small and very bright, as a spotlight is: pinpoints in the water
+  card(new THREE.PlaneGeometry(0.38, 0.3), lampDir.clone().multiplyScalar(2.2).toArray(), [55, 52, 47]);       // the softbox: a small bright panel (was a disc 0.23 across at 150: a bare spotlight's pinpoints), the same light in all
   card(new THREE.PlaneGeometry(0.5, 2.6), [-1.3, 0.4, -2.4], [9, 9.3, 10]);                                    // behind, either side: light along the can's edges
   card(new THREE.PlaneGeometry(0.4, 2.2), [1.5, 0.3, -2.2], [6, 6.2, 6.6]);
   card(new THREE.PlaneGeometry(1.6, 0.9), [-0.8, 0.9, 3], [0.8, 0.8, 0.76]);
@@ -37,7 +54,8 @@ export function buildSet(renderer, centre, pool) {
 
   const spot = new THREE.SpotLight(0xfff4e6, L.spot.power, 0, L.spot.angle, L.spot.soft, 2);
   spot.position.set(...L.spot.pos); spot.target.position.copy(centre);
-  spot.castShadow = true; spot.shadow.mapSize.set(1024, 1024); spot.shadow.radius = 7; spot.shadow.blurSamples = 16;   // radius: how soft the shadow's edge is
+  spot.castShadow = true; spot.shadow.mapSize.set(1024, 1024); spot.shadow.radius = qn('shadowblur', L.softbox.shadowBlur); spot.shadow.blurSamples = 24;   // radius: how soft the shadow's edge is
+  spot.shadow.intensity = qn('shadow', L.softbox.shadow);                                                                                // how dark: the light the shadow stops
   spot.shadow.camera.near = 0.25; spot.shadow.camera.far = 1.3; spot.shadow.bias = -0.0003; spot.shadow.normalBias = 0.0006;
   const hemi = new THREE.HemisphereLight(rgb(0.1, 0.5, 0.33), rgb(0, 0.06, 0.035), 0.12);
   group.add(spot, spot.target, hemi);
