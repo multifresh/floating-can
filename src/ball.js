@@ -12,7 +12,7 @@
 // The ball can be picked up and thrown. It stays in the plane it sits in (it never moves toward or away from the
 // camera), falls, bounces on the table and off the can, and rolls. A hit nudges the can's spin.
 import * as THREE from 'three';
-import { CAN } from './can.js?v=92c1edb3';
+import { CAN } from './can.js?v=0f44a8fc';
 
 const R = 21.335, SLOPE = 0.28, LOGO = [71 * 25.4 / 72, 30 * 25.4 / 72];          // SLOPE: the dimple wall's slope at its edge; the depth follows from it
 
@@ -104,12 +104,14 @@ export class Ball {
   // it comes from up to 3.5 cm to the left (away from the can; less on a narrow phone, so it drops in whole), slowing evenly, and turns as a rolling ball does, ending at the
   // set turn. The path is planned once the view is known (after a short pause, so the can shows first); grabbing the
   // ball on the way hands it to the physics.
-  intro(delay = 0.6) { this.show = { t: -delay, q: this.mesh.quaternion.clone(), x: this.p.x }; this.mesh.visible = false; }
+  intro(delay = 0.8) { this.show = { t: -delay, q: this.mesh.quaternion.clone(), x: this.p.x }; this.mesh.visible = false; }
   entrance(dt, cam) {
     const S = this.show, { p, v } = this;
-    S.wait = (S.wait ?? 0) + dt;                                                        // the pause runs only on smooth frames: a slow one
-    S.t = dt < 0.04 || S.wait > 3 ? S.t + dt : Math.min(S.t, -0.3);                    // puts it back to 0.3 s, so it drops once all is steady
-    if (S.t < 0) return;
+    if (!S.hops) {                                                                      // the pause runs only on smooth frames: a slow one puts
+      S.wait = (S.wait ?? 0) + dt;                                                      // it back to 0.4 s, so it drops once all is steady (at
+      S.t = dt < 0.045 || S.wait > 3 ? S.t + dt : Math.min(S.t, -0.4);                 // most 3 s). Only before it drops: once it falls it never
+      if (S.t < 0) return;                                                              // goes back (it did, and restarted mid-bounce: the designer)
+    } else S.t += dt;
     if (!S.hops) {
       _v.set(0, 1, 0.5).unproject(cam).sub(cam.position);                              // the top edge of the view, in the ball's plane
       const top = cam.position.y + _v.y * (this.z - cam.position.z) / _v.z;
