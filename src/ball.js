@@ -12,7 +12,7 @@
 // The ball can be picked up and thrown. It stays in the plane it sits in (it never moves toward or away from the
 // camera), falls, bounces on the table and off the can, and rolls. A hit nudges the can's spin.
 import * as THREE from 'three';
-import { CAN } from './can.js?v=135caa89';
+import { CAN } from './can.js?v=0f8c8ffa';
 
 const R = 21.335, SLOPE = 0.28, LOGO = [71 * 25.4 / 72, 30 * 25.4 / 72];          // SLOPE: the dimple wall's slope at its edge; the depth follows from it
 
@@ -98,9 +98,41 @@ export class Ball {
     this.held = null; _plane.set(Z, -z);
     mesh.position.set(x, RM, z);
   }
+  // The entrance (the designer): when the page opens the ball drops in from above the top of the view, rattles down through its
+  // bounces (each keeps 72 % of the speed, as on the table) and rolls into its place beside the can, so it stops with
+  // the logo facing the camera as it was set. It is a planned path rather than the physics, so it always lands just so:
+  // it comes from up to 3.5 cm to the left (away from the can; less on a narrow phone, so it drops in whole), slowing evenly, and turns as a rolling ball does, ending at the
+  // set turn. The path is planned once the view is known (after a short pause, so the can shows first); grabbing the
+  // ball on the way hands it to the physics.
+  intro(delay = 0.6) { this.show = { t: -delay, q: this.mesh.quaternion.clone(), x: this.p.x }; this.mesh.visible = false; }
+  entrance(dt, cam) {
+    const S = this.show, { p, v } = this;
+    S.t += dt;
+    if (S.t < 0) return;
+    if (!S.hops) {
+      _v.set(0, 1, 0.5).unproject(cam).sub(cam.position);                              // the top edge of the view, in the ball's plane
+      const top = cam.position.y + _v.y * (this.z - cam.position.z) / _v.z;
+      S.h0 = Math.max(top + 1.2 * RM, 0.12) - RM; S.t0 = Math.sqrt(2 * S.h0 / G); S.hops = [];
+      for (let u = G * S.t0 * 0.72; u > 0.1; u *= 0.72) S.hops.push(u);
+      S.T = S.t0 + S.hops.reduce((a, u) => a + 2 * u / G, 0) + 0.35; S.t = 0; this.mesh.visible = true;
+      _w.set(-1, 0, 0.5).unproject(cam).sub(cam.position);                              // on a narrow phone, start nearer, so it drops in whole
+      S.D = Math.min(0.035, Math.max(0.012, S.x - (cam.position.x + _w.x * (this.z - cam.position.z) / _w.z + 1.1 * RM)));
+    }
+    const t = Math.min(S.t, S.T);
+    let y = RM, vy = 0, tt = t - S.t0;
+    if (tt < 0) { y = RM + S.h0 - G * t * t / 2; vy = -G * t; }
+    else for (const u of S.hops) { const d = 2 * u / G; if (tt < d) { y = RM + u * tt - G * tt * tt / 2; vy = u - G * tt; break; } tt -= d; }
+    const D = S.D, k = 1 - t / S.T;
+    p.set(S.x - D * k * k, y); v.set(2 * D * k / S.T, vy); this.w = -v.x / RM;
+    this.mesh.position.set(p.x, p.y, this.z);
+    this.mesh.quaternion.setFromAxisAngle(Z, -(p.x - S.x) / RM).multiply(S.q);
+    if (S.t >= S.T) { this.show = null; v.set(0, 0); this.w = 0; }
+  }
   // Pick it up if the pointer's ray passes over it (a little generously).
   grab(ray) {
+    if (this.show && !this.show.hops) return false;                                    // not in view yet
     if (ray.distanceToPoint(this.mesh.position) > RM * 1.35 || !ray.intersectPlane(_plane, _v)) return false;
+    this.show = null;
     this.held = { off: new THREE.Vector2(this.p.x - _v.x, this.p.y - _v.y), target: this.p.clone(), vel: new THREE.Vector2() };
     return true;
   }
@@ -109,6 +141,7 @@ export class Ball {
 
   // can: { group, prev (its matrix last frame), spin (its spin, rad/s, world axes), free (not being turned by hand) }
   update(dt, cam, can) {
+    if (this.show) return this.entrance(dt, cam);
     const { p, v } = this, held = this.held, before = p.clone();
     // the edges of the view, at the ball's height, are walls for the ball's centre, so it can go half off either side (the designer,
     // for phones); never closer than 6 cm to the can's axis, so there is room for the ball beside the can
